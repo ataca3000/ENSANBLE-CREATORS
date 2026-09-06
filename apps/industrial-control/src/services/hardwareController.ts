@@ -1,4 +1,5 @@
 import mqtt from 'mqtt';
+import { parseCNCResponse } from '../hardware/cnc-protocol';
 
 export interface TelemetryData {
   temp?: number;
@@ -7,6 +8,11 @@ export interface TelemetryData {
   vibration?: number;
   load?: number;
   flow?: number;
+  cncStatus?: string;
+  cncOk?: boolean;
+  cncErrorCode?: number;
+  cncAlarmCode?: number;
+  position?: { x: number; y: number; z: number };
   [key: string]: any; // Allow other parsed JSON fields
 }
 
@@ -183,6 +189,19 @@ export class HardwareController {
     if (!data) return;
     this.rawDataListeners.forEach(cb => cb(data));
 
+    const trimmed = data.trim();
+    if (trimmed.startsWith('<') || /^(ok|error:|alarm:)/i.test(trimmed)) {
+      const cnc = parseCNCResponse(trimmed);
+      this.emitSensorData({
+        cncStatus: cnc.status,
+        cncOk: cnc.ok,
+        cncErrorCode: cnc.errorCode,
+        cncAlarmCode: cnc.alarmCode,
+        position: cnc.position,
+      });
+      return;
+    }
+
     try {
       // Intentar forzar parseo JSON por si es un payload estructurado
       const parsed = JSON.parse(data);
@@ -346,7 +365,7 @@ export class HardwareController {
 
   // Comandos de automatización predefinidos
   async emergencyStop() {
-    await this.sendCommand('M112'); // Parada de emergencia estándar
+    return this.sendCommand('M112'); // Parada de emergencia estándar
   }
 
   async startSpindle(rpm: number) {
