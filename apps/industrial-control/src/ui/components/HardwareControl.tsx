@@ -119,17 +119,17 @@ export function HardwareControl() {
   };
 
   const handleEmergency = async () => {
-    await hardware.emergencyStop();
-    addLog('[CRÍTICO] E-STOP ACTIVADO (HALT)');
+    const sent = await hardware.emergencyStop();
+    addLog(sent ? '[CRÍTICO] E-STOP ACTIVADO (HALT)' : '[ERROR] E-STOP no enviado: hardware no conectado');
   };
 
 
   const sendCustomGcode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!gcode) return;
-    await hardware.sendCommand(gcode);
-    addLog(`[TX] ${gcode}`);
-    setGcode('');
+    const sent = await hardware.sendCommand(gcode);
+    addLog(sent ? `[TX] ${gcode}` : `[ERROR] Comando no enviado: ${gcode}`);
+    if (sent) setGcode('');
   };
 
   const handleLegoQuery = (e: React.FormEvent) => {

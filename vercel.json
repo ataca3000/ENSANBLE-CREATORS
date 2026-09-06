@@ -3,13 +3,27 @@
   "builds": [
     {
       "src": "apps/industrial-control/package.json",
-      "use": "@vercel/static-build"
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "apps/industrial-control/api/index.ts",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/apps/industrial-control/api/index.ts"
+    },
+    {
       "src": "/(.*)",
-      "dest": "apps/industrial-control/dist/index.html"
+      "dest": "/index.html"
     }
   ]
 }

@@ -11,6 +11,7 @@ export interface TelemetryData {
 }
 
 export class HardwareController {
+  private readonly simulationEnabled: boolean;
   private port: any | null = null;
   private writer: WritableStreamDefaultWriter<string> | null = null;
   private ws: WebSocket | null = null;
@@ -20,6 +21,10 @@ export class HardwareController {
   private rawDataListeners: Set<(data: string) => void> = new Set();
   onSensorData: ((data: TelemetryData) => void) | null = null;
   onError: ((error: string) => void) | null = null;
+
+  constructor(options?: { simulation?: boolean }) {
+    this.simulationEnabled = options?.simulation ?? import.meta.env.VITE_HARDWARE_SIMULATION === 'true';
+  }
 
   addSensorListener(cb: (data: TelemetryData) => void) {
     this.sensorListeners.add(cb);
@@ -239,12 +244,20 @@ export class HardwareController {
     try {
       if (this.writer) {
         await this.writer.write(gcode + '\n');
-      } else {
+        return true;
+      }
+
+      if (this.simulationEnabled) {
         console.warn('Simulando envío de comando G-CODE:', gcode);
         // Wait for simulation
         await new Promise(resolve => setTimeout(resolve, 500));
         this.simulateGCodeEffect(gcode);
+        return true;
       }
+
+      const error = 'Hardware no conectado. Conecta un dispositivo o activa VITE_HARDWARE_SIMULATION para laboratorio.';
+      if (this.onError) this.onError(error);
+      return false;
     } catch (err: any) {
       console.error('Error enviando comando:', err);
       if (!fromSyncQueue && typeof window !== 'undefined') {
@@ -253,6 +266,7 @@ export class HardwareController {
          offlineSync.addTask('local_machine', 'sendCommand', { gcode });
       }
       if (this.onError) this.onError(`Command failed: ${err.message || 'Port disconnected'}`);
+      return false;
     }
   }
 
