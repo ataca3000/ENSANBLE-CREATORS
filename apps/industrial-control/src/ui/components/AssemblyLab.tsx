@@ -29,25 +29,21 @@ import {
   Cpu,
 } from "lucide-react";
 import {
+  db,
+  auth,
+  handleSupabaseError,
+  OperationType,
+  isSupabaseEnabled,
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged,
   User,
-} from "firebase/auth";
-import {
   collection,
   doc,
   setDoc,
   deleteDoc,
   onSnapshot,
-} from "firebase/firestore";
-import {
-  db,
-  auth,
-  handleFirestoreError,
-  OperationType,
-  isFirebaseEnabled,
-} from "../../firebase";
+} from "../../supabase";
 import * as THREE from "three";
 // @ts-ignore
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
@@ -330,7 +326,7 @@ export function AssemblyLab() {
   }> = [...machines, ...customMachines];
 
   useEffect(() => {
-    if (!isFirebaseEnabled) {
+    if (!isSupabaseEnabled) {
       setUser({
         uid: "local-user",
         email: "local-user@example.com",
@@ -352,7 +348,7 @@ export function AssemblyLab() {
       return;
     }
 
-    if (!isFirebaseEnabled) {
+    if (!isSupabaseEnabled) {
       const localData = localStorage.getItem("nexus_cam_machines");
       if (localData) {
         try {
@@ -384,7 +380,7 @@ export function AssemblyLab() {
         setMachines(loadedMachines);
       },
       (error) => {
-        handleFirestoreError(
+        handleSupabaseError(
           error,
           OperationType.LIST,
           `users/${user.uid}/machines`,
@@ -405,7 +401,7 @@ export function AssemblyLab() {
   }, [user]); // Re-bind if user changes since addMachine depends on user
 
   const handleSignIn = async () => {
-    if (!isFirebaseEnabled) return;
+    if (!isSupabaseEnabled) return;
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
@@ -585,7 +581,7 @@ export function AssemblyLab() {
       (Math.random() - 0.5) * 6,
     ];
 
-    if (!isFirebaseEnabled) {
+    if (!isSupabaseEnabled) {
       const newMachine = {
         id,
         type,
@@ -611,7 +607,7 @@ export function AssemblyLab() {
         ...extraData,
       });
     } catch (error) {
-      handleFirestoreError(
+      handleSupabaseError(
         error,
         OperationType.CREATE,
         `users/${user.uid}/machines/${id}`,
@@ -633,7 +629,7 @@ export function AssemblyLab() {
       ? currentSensors.filter((s) => s !== sensorType)
       : [...currentSensors, sensorType];
 
-    if (!isFirebaseEnabled) {
+    if (!isSupabaseEnabled) {
       const updated = machines.map((m) =>
         m.id === machineId ? { ...m, sensors: newSensors } : m,
       );
@@ -683,7 +679,7 @@ export function AssemblyLab() {
       return;
     }
 
-    if (!isFirebaseEnabled) {
+    if (!isSupabaseEnabled) {
       const updated = machines.filter((m) => m.id !== id);
       setMachines(updated);
       localStorage.setItem("nexus_cam_machines", JSON.stringify(updated));
@@ -695,7 +691,7 @@ export function AssemblyLab() {
       setSaving(true);
       await deleteDoc(doc(db, "users", user.uid, "machines", id));
     } catch (error) {
-      handleFirestoreError(
+      handleSupabaseError(
         error,
         OperationType.DELETE,
         `users/${user.uid}/machines/${id}`,

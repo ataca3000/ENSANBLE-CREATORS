@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, X, RefreshCw, Signal } from 'lucide-react';
-import { auth, isFirebaseEnabled } from '../../firebase';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { getCurrentUser, isSupabaseEnabled, onAuthStateChanged, signInWithGoogle } from '../../supabase';
 import Peer from 'peerjs';
 
 export function MobileScanner() {
-  const [user, setUser] = useState(auth?.currentUser || null);
+  const [user, setUser] = useState<any>(null);
   const [peer, setPeer] = useState<Peer | null>(null);
   const [status, setStatus] = useState<string>('Initializing...');
   const [connected, setConnected] = useState(false);
@@ -13,7 +12,7 @@ export function MobileScanner() {
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    if (!isFirebaseEnabled) {
+    if (!isSupabaseEnabled) {
       setUser({
         uid: 'local-user',
         email: 'local-user@example.com',
@@ -21,15 +20,14 @@ export function MobileScanner() {
       } as any);
       return;
     }
-    const unsub = onAuthStateChanged(auth, u => {
-      setUser(u);
-    });
+    const unsub = onAuthStateChanged(setUser);
+    getCurrentUser().then(setUser);
     return unsub;
   }, []);
 
   const login = () => {
-    if (!isFirebaseEnabled) return;
-    signInWithPopup(auth, new GoogleAuthProvider()).catch(console.error);
+    if (!isSupabaseEnabled) return;
+    signInWithGoogle().catch(console.error);
   };
 
   const startCameraAndCall = async () => {

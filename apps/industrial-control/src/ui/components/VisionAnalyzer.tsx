@@ -1,8 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { Camera, Scan, Cpu, Smartphone, X } from 'lucide-react';
-import { auth, isFirebaseEnabled } from '../../firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { getCurrentUser, isSupabaseEnabled, onAuthStateChanged, User } from '../../supabase';
 import { Peer } from 'peerjs';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -20,7 +19,7 @@ export function VisionAnalyzer() {
   const [showQR, setShowQR] = useState(false);
 
   useEffect(() => {
-    if (!isFirebaseEnabled) {
+    if (!isSupabaseEnabled) {
       setUser({
         uid: 'local-user',
         email: 'local-user@example.com',
@@ -28,7 +27,8 @@ export function VisionAnalyzer() {
       } as any);
       return;
     }
-    const unsub = onAuthStateChanged(auth, u => setUser(u));
+    const unsub = onAuthStateChanged(setUser);
+    getCurrentUser().then(setUser);
     return unsub;
   }, []);
 

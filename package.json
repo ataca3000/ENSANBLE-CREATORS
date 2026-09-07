@@ -12,8 +12,7 @@
     "clean": "rimraf node_modules apps/*/node_modules apps/*/dist apps/*/build .turbo"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "firebase-admin": "^14.0.0"
+    "@modelcontextprotocol/sdk": "^1.29.0"
   },
   "overrides": {
     "uuid": "11.1.1"

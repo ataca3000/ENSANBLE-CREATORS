@@ -8,31 +8,31 @@ import nodemailer from "nodemailer";
 import { networkInterfaces } from "os";
 import { exec } from "child_process";
 import { Jimp } from "jimp";
-import { db } from "./firebase"; // Corregido para usar el archivo en la misma carpeta
+import { supabaseAdmin } from "./supabase";
 
 dotenv.config();
 
 const router = Router();
 
-// Helper para registrar/actualizar usuarios en Firestore
+// Helper para registrar/actualizar usuarios en Supabase
 async function syncUserToDb(user: {
   email: string;
   name?: string;
   provider: string;
 }) {
-  if (!db) return;
+  if (!supabaseAdmin) return;
   try {
-    const userRef = db.collection("users").doc(user.email);
-    await userRef.set(
+    const { error } = await supabaseAdmin.from("users").upsert(
       {
+        id: user.email,
         ...user,
-        lastLogin: new Date(),
-        updatedAt: new Date(),
+        last_login: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
-      { merge: true },
     );
+    if (error) throw error;
   } catch (error) {
-    console.error("Error syncing user to Firestore:", error);
+    console.error("Error syncing user to Supabase:", error);
   }
 }
 
@@ -151,9 +151,9 @@ async function logFallbackEvent(
     timestamp: new Date(),
   };
 
-  if (db) {
+  if (supabaseAdmin) {
     try {
-      await db.collection("fallback_logs").add(logEntry);
+      await supabaseAdmin?.from("fallback_logs").insert(logEntry);
     } catch (err) {
       console.warn("Could not persist fallback log:", err);
     }
@@ -420,9 +420,9 @@ router.post("/vision", async (req, res) => {
 // Endpoint de auditoría para movimientos del Gemelo Digital
 router.post("/telemetry/log", async (req, res) => {
   const { action, details, objectId, isRealData, severity } = req.body;
-  if (!db) return res.status(500).json({ error: "DB not initialized" });
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not initialized" });
 
-  await db.collection("audit_logs").add({
+  const { error } = await supabaseAdmin.from("audit_logs").insert({
     action,
     details: isRealData
       ? details
@@ -430,24 +430,27 @@ router.post("/telemetry/log", async (req, res) => {
     objectId,
     isRealData: !!isRealData,
     severity: severity || (action.includes("DISCONNECT") ? "CRITICAL" : "INFO"),
-    timestamp: new Date(),
+    timestamp: new Date().toISOString(),
     user: (req as any).session?.user?.email || "anonymous",
   });
+  if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
 });
 
 // Helper para persistencia
 async function saveChatLog(prompt: string, result: any, req: any) {
-  if (db && process.env.FIREBASE_PROJECT_ID) {
-    await db
-      .collection("chat_logs")
-      .add({
+  if (supabaseAdmin) {
+    await supabaseAdmin
+      .from("chat_logs")
+      .insert({
         prompt,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         user: (req as any).session?.user?.email || "anonymous",
         response: result.message || "",
       })
-      .catch((err) => console.error("Firestore Save Error:", err));
+      .then(({ error }) => {
+        if (error) console.error("Supabase Save Error:", error);
+      });
   }
 }
 
